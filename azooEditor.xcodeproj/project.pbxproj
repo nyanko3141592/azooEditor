@@ -18,7 +18,6 @@
 		552061202B6E9A31005017F9 /* azooEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = azooEditor.swift; sourceTree = "<group>"; };
 		552061222B6E9A31005017F9 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		552061242B6E9A35005017F9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		552061272B6E9A35005017F9 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		552061292B6E9A35005017F9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		5520613F2B6F61C0005017F9 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		B09211152B70D412001CD413 /* mm.binary */ = {isa = PBXFileReference; lastKnownFileType = file; path = mm.binary; sourceTree = "<group>"; };
@@ -2160,6 +2159,7 @@
 		B09219702B70D414001CD413 /* p_—.csv */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "p_—.csv"; sourceTree = "<group>"; };
 		B09219712B70D414001CD413 /* p_ド.csv */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "p_ド.csv"; sourceTree = "<group>"; };
 		B09219722B70D414001CD413 /* p_テ.csv */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "p_テ.csv"; sourceTree = "<group>"; };
+		B099F8092B70E9740081E409 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -2200,17 +2200,9 @@
 				552061372B6EA5DE005017F9 /* Resources */,
 				552061242B6E9A35005017F9 /* Assets.xcassets */,
 				552061292B6E9A35005017F9 /* Info.plist */,
-				552061262B6E9A35005017F9 /* Preview Content */,
+				B099F8082B70E9740081E409 /* Preview Content */,
 			);
 			path = azooEditor;
-			sourceTree = "<group>";
-		};
-		552061262B6E9A35005017F9 /* Preview Content */ = {
-			isa = PBXGroup;
-			children = (
-				552061272B6E9A35005017F9 /* Preview Assets.xcassets */,
-			);
-			path = "Preview Content";
 			sourceTree = "<group>";
 		};
 		552061342B6EA387005017F9 /* Frameworks */ = {
@@ -4397,6 +4389,15 @@
 				B09219722B70D414001CD413 /* p_テ.csv */,
 			);
 			path = p;
+			sourceTree = "<group>";
+		};
+		B099F8082B70E9740081E409 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				B099F8092B70E9740081E409 /* Preview Assets.xcassets */,
+			);
+			name = "Preview Content";
+			path = "../../azooKey.tmp/azooEditor/Preview Content";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
