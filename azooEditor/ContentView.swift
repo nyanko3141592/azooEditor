@@ -23,6 +23,7 @@ struct ContentView: View {
     @State private var justCopied: Bool = false
     @State private var ornamentPosition: UnitPoint = .trailing
     @FocusState private var textFieldFocus
+    private let typesettingLanguage = TypesettingLanguage.explicit(.init(languageCode: .japanese, script: .japanese, region: .japan))
     private static let option = ConvertRequestOptions(
         requireJapanesePrediction: false,
         requireEnglishPrediction: false,
@@ -69,6 +70,7 @@ struct ContentView: View {
             } label: {
                 Text(candidates[index].text)
                     .font(.largeTitle)
+                    .typesettingLanguage(typesettingLanguage)
                     .bold(selection == index)
                     .underline(selection == index)
                     .padding()
@@ -255,6 +257,7 @@ struct ContentView: View {
             } else {
                 (Text(result) + Text(composingText.convertTarget).underline())
                     .font(.largeTitle)
+                    .typesettingLanguage(typesettingLanguage)
                     .draggable(result + composingText.convertTarget)
             }
             Spacer()
