@@ -13,5 +13,6 @@ struct azooEditor: App {
         WindowGroup {
             ContentView()
         }
+        .defaultSize(CGSize(width: 200, height: 600))
     }
 }
