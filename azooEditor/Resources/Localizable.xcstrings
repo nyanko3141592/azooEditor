@@ -31,7 +31,11 @@
         }
       }
     },
+    "Copy (⌘C)" : {
+
+    },
     "Copy and Claer" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ja" : {
           "stringUnit" : {
@@ -40,6 +44,9 @@
           }
         }
       }
+    },
+    "Cut (⌘X)" : {
+
     },
     "IME OFF" : {
       "localizations" : {

@@ -20,8 +20,8 @@ struct ContentView: View {
     @State private var candidateCount = 5
     @State private var imeState = true
     @State private var deleteTask: Task<Void, any Error>?
+    @State private var justCopied: Bool = false
     @FocusState private var textFieldFocus
-    private let typesettingLanguage = TypesettingLanguage.explicit(.init(languageCode: .japanese, script: .japanese, region: .japan))
     private static let option = ConvertRequestOptions(
         requireJapanesePrediction: false,
         requireEnglishPrediction: false,
@@ -68,7 +68,6 @@ struct ContentView: View {
             } label: {
                 Text(candidates[index].text)
                     .font(.largeTitle)
-                    .typesettingLanguage(typesettingLanguage)
                     .bold(selection == index)
                     .underline(selection == index)
                     .padding()
@@ -125,6 +124,37 @@ struct ContentView: View {
         }
     }
 
+    private func clear() {
+        result = ""
+        candidates = []
+        composingText = ComposingText()
+        selection = nil
+    }
+
+    private func copy() {
+        UIPasteboard.general.string = self.result
+        Task {
+            if self.justCopied {
+                return
+            }
+            self.justCopied = true
+            try await Task.sleep(for: .seconds(1))
+            self.justCopied = false
+        }
+    }
+
+    private var textViewCommand: TextViewCommands {
+        .init(
+            cut: {
+                self.copy()
+                self.clear()
+            },
+            copy: {
+                self.copy()
+            }
+        )
+    }
+
     var body: some View {
         VStack {
             Text("azooEditor")
@@ -133,7 +163,7 @@ struct ContentView: View {
                     // Here's some hacky impl to get keyboard event correctly
                     // delete from virtual keyboard in visionOS cannot be captured `onKeyPress`
                     // to capture it, get method here always return 'a' and if the newValue is "" delete is fired.
-                    TextEditor(text: .init(get: { "a" }, set: { newValue in
+                    CommandOverrideTextView(text: .init(get: { "a" }, set: { newValue in
                         if newValue.count == 1 {
                             // empty
                             return
@@ -163,7 +193,7 @@ struct ContentView: View {
                             "?": "？",
                         ][key, default: key]
                         self.composingText.insertAtCursorPosition(target.lowercased(), inputStyle: .roman2kana)
-                    }))
+                    }), TextViewCommands: textViewCommand)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
                         .frame(maxWidth: 1, maxHeight: 1)
@@ -212,7 +242,10 @@ struct ContentView: View {
                             self.imeState.toggle()
                             return .handled
                         }
-
+                        .onKeyPress(.escape) {
+                            self.textFieldFocus = false
+                            return .handled
+                        }
                 }
             if result.isEmpty && composingText.isEmpty {
                 Text("After you commit text they will be added here")
@@ -221,23 +254,22 @@ struct ContentView: View {
                 Divider()
                 (Text(result) + Text(composingText.convertTarget).underline())
                     .font(.largeTitle)
-                    .typesettingLanguage(typesettingLanguage)
-                HStack(spacing: 20) {
-                    Button("Copy and Claer", systemImage: "doc.on.doc") {
-                        UIPasteboard.general.string = result
-                        result = ""
-                        candidates = []
-                        composingText = ComposingText()
-                        selection = nil
+                    .draggable(result + composingText.convertTarget)
+                HStack(spacing: 30) {
+                    Button("Copy (⌘C)", systemImage: justCopied ? "checkmark" : "doc.on.doc") {
+                        self.copy()
+                    }
+                    .keyboardShortcut("c", modifiers: .command)
+                    Button("Cut (⌘X)", systemImage: "scissors") {
+                        self.copy()
+                        self.clear()
                     }
                     .keyboardShortcut("x", modifiers: .command)
                     Button("Claer", systemImage: "xmark") {
-                        result = ""
-                        candidates = []
-                        composingText = ComposingText()
-                        selection = nil
+                        self.clear()
                     }
                 }
+                .font(.largeTitle)
             }
             Spacer()
             if !textFieldFocus {
@@ -248,6 +280,7 @@ struct ContentView: View {
                         .font(.extraLargeTitle)
                         .padding(20)
                 }
+                .keyboardShortcut(.return, modifiers: [])
             }
             if !imeState {
                 Text("IME OFF")
@@ -286,4 +319,91 @@ struct ContentView: View {
 
 #Preview(windowStyle: .automatic) {
     ContentView()
+}
+
+class CommandOverrideUITextView: UITextView {
+    var textViewCommands: TextViewCommands = .default
+
+    @objc override func copy(_ sender: Any?) {
+        if let copy = textViewCommands.copy {
+            copy()
+        } else {
+            super.copy(sender)
+        }
+    }
+    @objc override func cut(_ sender: Any?) {
+        if let cut = textViewCommands.cut {
+            cut()
+        } else {
+            super.cut(sender)
+        }
+    }
+    @objc override func paste(_ sender: Any?) {
+        if let paste = textViewCommands.paste {
+            paste()
+        } else {
+            super.paste(sender)
+        }
+    }
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        // コマンドを有効にする
+        if action == #selector(cut(_:)) && self.textViewCommands.cut != nil {
+            return true
+        }
+        if action == #selector(copy(_:)) && self.textViewCommands.copy != nil {
+            return true
+        }
+        if action == #selector(paste(_:)) && self.textViewCommands.paste != nil {
+            return true
+        }
+        return super.canPerformAction(action, withSender: sender)
+    }
+}
+
+
+@MainActor struct TextViewCommands {
+    var cut: (() -> ())?
+    var copy: (() -> ())?
+    var paste: (() -> ())?
+
+    static let `default`: Self = TextViewCommands()
+}
+
+struct CommandOverrideTextView: UIViewRepresentable {
+
+    @Binding var text: String
+    var textViewCommands: TextViewCommands
+
+    init(text: Binding<String>, TextViewCommands: TextViewCommands = .default) {
+        self._text = text
+        self.textViewCommands = TextViewCommands
+    }
+
+    func makeUIView(context: Context) -> CommandOverrideUITextView {
+        let textView = CommandOverrideUITextView (frame: .zero)
+        textView.textViewCommands = self.textViewCommands
+        textView.delegate = context.coordinator
+        return textView
+    }
+
+    func updateUIView(_ uiView: CommandOverrideUITextView, context: Context) {
+        uiView.text = text
+    }
+
+    func makeCoordinator() -> Coordinator {
+        return Coordinator(text: $text)
+    }
+
+    class Coordinator: NSObject, UITextViewDelegate {
+
+        @Binding var text: String
+
+        init(text: Binding<String>) {
+            self._text = text
+        }
+
+        func textViewDidChangeSelection(_ textView: UITextView) {
+            text = textView.text ?? ""
+        }
+    }
 }
