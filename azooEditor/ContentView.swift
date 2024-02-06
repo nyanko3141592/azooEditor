@@ -21,6 +21,7 @@ struct ContentView: View {
     @State private var imeState = true
     @State private var deleteTask: Task<Void, any Error>?
     @FocusState private var textFieldFocus
+    private let typesettingLanguage = TypesettingLanguage.explicit(.init(languageCode: .japanese, script: .japanese, region: .japan))
     private static let option = ConvertRequestOptions(
         requireJapanesePrediction: false,
         requireEnglishPrediction: false,
@@ -67,6 +68,7 @@ struct ContentView: View {
             } label: {
                 Text(candidates[index].text)
                     .font(.largeTitle)
+                    .typesettingLanguage(typesettingLanguage)
                     .bold(selection == index)
                     .underline(selection == index)
                     .padding()
@@ -219,6 +221,7 @@ struct ContentView: View {
                 Divider()
                 (Text(result) + Text(composingText.convertTarget).underline())
                     .font(.largeTitle)
+                    .typesettingLanguage(typesettingLanguage)
                 HStack(spacing: 20) {
                     Button("Copy and Claer", systemImage: "doc.on.doc") {
                         UIPasteboard.general.string = result
