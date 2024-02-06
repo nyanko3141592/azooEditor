@@ -10,10 +10,10 @@
 		552061232B6E9A31005017F9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 552061222B6E9A31005017F9 /* ContentView.swift */; };
 		5520613E2B6F46AF005017F9 /* KanaKanjiConverterModule in Frameworks */ = {isa = PBXBuildFile; productRef = 5520613D2B6F46AF005017F9 /* KanaKanjiConverterModule */; };
 		552061432B6FEEE9005017F9 /* WrappingHStack in Frameworks */ = {isa = PBXBuildFile; productRef = 552061422B6FEEE9005017F9 /* WrappingHStack */; };
+		B04E286F2B726C6000DB424C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 552061242B6E9A35005017F9 /* Assets.xcassets */; };
 		B09211132B70CFEE001CD413 /* azooEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 552061202B6E9A31005017F9 /* azooEditor.swift */; };
 		B0E325672B71F3AB00E57757 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B099F8092B70E9740081E409 /* Preview Assets.xcassets */; };
 		B0E325682B71F3BF00E57757 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 5520613F2B6F61C0005017F9 /* Localizable.xcstrings */; };
-		B0E325692B71F3C600E57757 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 552061242B6E9A35005017F9 /* Assets.xcassets */; };
 		B0E32DCA2B71F49200E57757 /* Dictionary in Resources */ = {isa = PBXBuildFile; fileRef = B0E32DC92B71F49200E57757 /* Dictionary */; };
 /* End PBXBuildFile section */
 
@@ -163,8 +163,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B04E286F2B726C6000DB424C /* Assets.xcassets in Resources */,
 				B0E32DCA2B71F49200E57757 /* Dictionary in Resources */,
-				B0E325692B71F3C600E57757 /* Assets.xcassets in Resources */,
 				B0E325682B71F3BF00E57757 /* Localizable.xcstrings in Resources */,
 				B0E325672B71F3AB00E57757 /* Preview Assets.xcassets in Resources */,
 			);
