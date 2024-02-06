@@ -20,8 +20,9 @@ struct ContentView: View {
     @State private var candidateCount = 5
     @State private var imeState = true
     @State private var deleteTask: Task<Void, any Error>?
+    @State private var justCopied: Bool = false
+    @State private var ornamentPosition: UnitPoint = .trailing
     @FocusState private var textFieldFocus
-    private let typesettingLanguage = TypesettingLanguage.explicit(.init(languageCode: .japanese, script: .japanese, region: .japan))
     private static let option = ConvertRequestOptions(
         requireJapanesePrediction: false,
         requireEnglishPrediction: false,
@@ -32,7 +33,7 @@ struct ContentView: View {
         sharedContainerURL: .applicationDirectory,
         metadata: .init(appVersionString: "azooEditor Version 1.0")
     )
-
+    
     func commitIndex(_ index: Int?) {
         defer {
             self.selection = nil
@@ -60,7 +61,7 @@ struct ContentView: View {
             self.candidates = []
         }
     }
-
+    
     @ViewBuilder private var candidatesView: some View {
         ForEach(candidates.indices.prefix(candidateCount), id: \.self) { index in
             Button {
@@ -68,7 +69,6 @@ struct ContentView: View {
             } label: {
                 Text(candidates[index].text)
                     .font(.largeTitle)
-                    .typesettingLanguage(typesettingLanguage)
                     .bold(selection == index)
                     .underline(selection == index)
                     .padding()
@@ -80,12 +80,12 @@ struct ContentView: View {
             }
         }
     }
-
+    
     private func updateCandidates() {
         let results = converter.requestCandidates(self.composingText, options: Self.option)
         self.candidates = results.mainResults
     }
-
+    
     private func nextCandidate() {
         if let currentSelection = selection {
             let newSelection = min(currentSelection + 1, candidates.count)
@@ -98,7 +98,7 @@ struct ContentView: View {
             self.selection = 0
         }
     }
-
+    
     private func triggerReturn() {
         if self.composingText.isEmpty {
             self.result += "\n"
@@ -106,7 +106,7 @@ struct ContentView: View {
             self.commitIndex(selection)
         }
     }
-
+    
     private func triggerSpace() {
         if composingText.isEmpty {
             result += " "
@@ -114,7 +114,7 @@ struct ContentView: View {
             nextCandidate()
         }
     }
-
+    
     private func triggerDelete() {
         if self.composingText.isEmpty {
             _ = self.result.popLast()
@@ -124,7 +124,38 @@ struct ContentView: View {
             self.selection = nil
         }
     }
-
+    
+    private func clear() {
+        result = ""
+        candidates = []
+        composingText = ComposingText()
+        selection = nil
+    }
+    
+    private func copy() {
+        UIPasteboard.general.string = self.result
+        Task {
+            if self.justCopied {
+                return
+            }
+            self.justCopied = true
+            try await Task.sleep(for: .seconds(1))
+            self.justCopied = false
+        }
+    }
+    
+    private var textViewCommand: TextViewCommands {
+        .init(
+            cut: {
+                self.copy()
+                self.clear()
+            },
+            copy: {
+                self.copy()
+            }
+        )
+    }
+    
     var body: some View {
         VStack {
             Text("azooEditor")
@@ -133,7 +164,7 @@ struct ContentView: View {
                     // Here's some hacky impl to get keyboard event correctly
                     // delete from virtual keyboard in visionOS cannot be captured `onKeyPress`
                     // to capture it, get method here always return 'a' and if the newValue is "" delete is fired.
-                    TextEditor(text: .init(get: { "a" }, set: { newValue in
+                    CommandOverrideTextView(text: .init(get: { "a" }, set: { newValue in
                         if newValue.count == 1 {
                             // empty
                             return
@@ -163,81 +194,68 @@ struct ContentView: View {
                             "?": "？",
                         ][key, default: key]
                         self.composingText.insertAtCursorPosition(target.lowercased(), inputStyle: .roman2kana)
-                    }))
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                        .frame(maxWidth: 1, maxHeight: 1)
-                        .focused($textFieldFocus)
-                        .onKeyPress(.return) {
-                            self.triggerReturn()
-                            return .handled
-                        }
-                        .onKeyPress(.delete, phases: .down) { _ in
-                            self.triggerDelete()
-                            self.deleteTask?.cancel()
-                            self.deleteTask = Task {
-                                // Wait for 0.4s first
-                                try await Task.sleep(for: .milliseconds(400))
-                                while !Task.isCancelled {
-                                    self.triggerDelete()
-                                    // then trigger for every 0.1s
-                                    try await Task.sleep(for: .milliseconds(100))
-                                }
+                    }), TextViewCommands: textViewCommand)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .frame(maxWidth: 1, maxHeight: 1)
+                    .focused($textFieldFocus)
+                    .onKeyPress(.return) {
+                        self.triggerReturn()
+                        return .handled
+                    }
+                    .onKeyPress(.delete, phases: .down) { _ in
+                        self.triggerDelete()
+                        self.deleteTask?.cancel()
+                        self.deleteTask = Task {
+                            // Wait for 0.4s first
+                            try await Task.sleep(for: .milliseconds(400))
+                            while !Task.isCancelled {
+                                self.triggerDelete()
+                                // then trigger for every 0.1s
+                                try await Task.sleep(for: .milliseconds(100))
                             }
-                            return .handled
                         }
-                        .onKeyPress(.delete, phases: .up) { _ in
-                            self.deleteTask?.cancel()
-                            return .handled
+                        return .handled
+                    }
+                    .onKeyPress(.delete, phases: .up) { _ in
+                        self.deleteTask?.cancel()
+                        return .handled
+                    }
+                    .onKeyPress(.clear) {
+                        self.triggerDelete()
+                        return .handled
+                    }
+                    .onKeyPress(.space) {
+                        self.triggerSpace()
+                        return .handled
+                    }
+                    .onKeyPress(.upArrow) {
+                        if let currentSelection = selection {
+                            selection = max(currentSelection - 1, 0)
                         }
-                        .onKeyPress(.clear) {
-                            self.triggerDelete()
-                            return .handled
-                        }
-                        .onKeyPress(.space) {
-                            self.triggerSpace()
-                            return .handled
-                        }
-                        .onKeyPress(.upArrow) {
-                            if let currentSelection = selection {
-                                selection = max(currentSelection - 1, 0)
-                            }
-                            return .handled
-                        }
-                        .onKeyPress(.downArrow) {
-                            nextCandidate()
-                            return .handled
-                        }
-                        .onKeyPress(.tab) {
-                            self.imeState.toggle()
-                            return .handled
-                        }
-
+                        return .handled
+                    }
+                    .onKeyPress(.downArrow) {
+                        nextCandidate()
+                        return .handled
+                    }
+                    .onKeyPress(.tab) {
+                        self.imeState.toggle()
+                        return .handled
+                    }
+                    .onKeyPress(.escape) {
+                        self.textFieldFocus = false
+                        return .handled
+                    }
                 }
+            Divider()
             if result.isEmpty && composingText.isEmpty {
                 Text("After you commit text they will be added here")
                     .foregroundStyle(.secondary)
             } else {
-                Divider()
                 (Text(result) + Text(composingText.convertTarget).underline())
                     .font(.largeTitle)
-                    .typesettingLanguage(typesettingLanguage)
-                HStack(spacing: 20) {
-                    Button("Copy and Claer", systemImage: "doc.on.doc") {
-                        UIPasteboard.general.string = result
-                        result = ""
-                        candidates = []
-                        composingText = ComposingText()
-                        selection = nil
-                    }
-                    .keyboardShortcut("x", modifiers: .command)
-                    Button("Claer", systemImage: "xmark") {
-                        result = ""
-                        candidates = []
-                        composingText = ComposingText()
-                        selection = nil
-                    }
-                }
+                    .draggable(result + composingText.convertTarget)
             }
             Spacer()
             if !textFieldFocus {
@@ -248,6 +266,7 @@ struct ContentView: View {
                         .font(.extraLargeTitle)
                         .padding(20)
                 }
+                .keyboardShortcut(.return, modifiers: [])
             }
             if !imeState {
                 Text("IME OFF")
@@ -276,6 +295,57 @@ struct ContentView: View {
             .disabled(!composingText.isEmpty)
             .keyboardShortcut(.tab)
         }
+        .ornament(visibility: result.isEmpty && composingText.isEmpty ? .hidden : .visible, attachmentAnchor: .scene(ornamentPosition)) {
+            VStack {
+                Button {
+                    self.copy()
+                } label: {
+                    Label("Copy (⌘C)", systemImage: justCopied ? "checkmark" : "doc.on.doc")
+                        .padding()
+                }
+                .keyboardShortcut("c", modifiers: .command)
+                Button {
+                    self.copy()
+                    self.clear()
+                } label: {
+                    Label("Cut (⌘X)", systemImage: "scissors")
+                        .padding()
+                }
+                .keyboardShortcut("x", modifiers: .command)
+                Button {
+                    self.clear()
+                } label: {
+                    Label("Claer", systemImage: "clear")
+                        .padding()
+                }
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.borderless)
+            .padding(.vertical)
+            .glassBackgroundEffect()
+            VStack {
+                if ornamentPosition == .leading {
+                    Button {
+                        ornamentPosition = .trailing
+                    } label: {
+                        Label("Move to right", systemImage: "arrow.right.to.line")
+                            .padding()
+                    }
+                } else if ornamentPosition == .trailing {
+                    Button {
+                        ornamentPosition = .leading
+                    } label: {
+                        Label("Move to left", systemImage: "arrow.left.to.line")
+                            .padding()
+                    }
+                }
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.borderless)
+            .padding(.vertical)
+            .glassBackgroundEffect()
+        }
+        
         .onAppear {
             self.converter.sendToDicdataStore(.setRequestOptions(Self.option))
             textFieldFocus = true
@@ -286,4 +356,91 @@ struct ContentView: View {
 
 #Preview(windowStyle: .automatic) {
     ContentView()
+}
+
+class CommandOverrideUITextView: UITextView {
+    var textViewCommands: TextViewCommands = .default
+    
+    @objc override func copy(_ sender: Any?) {
+        if let copy = textViewCommands.copy {
+            copy()
+        } else {
+            super.copy(sender)
+        }
+    }
+    @objc override func cut(_ sender: Any?) {
+        if let cut = textViewCommands.cut {
+            cut()
+        } else {
+            super.cut(sender)
+        }
+    }
+    @objc override func paste(_ sender: Any?) {
+        if let paste = textViewCommands.paste {
+            paste()
+        } else {
+            super.paste(sender)
+        }
+    }
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        // コマンドを有効にする
+        if action == #selector(cut(_:)) && self.textViewCommands.cut != nil {
+            return true
+        }
+        if action == #selector(copy(_:)) && self.textViewCommands.copy != nil {
+            return true
+        }
+        if action == #selector(paste(_:)) && self.textViewCommands.paste != nil {
+            return true
+        }
+        return super.canPerformAction(action, withSender: sender)
+    }
+}
+
+
+@MainActor struct TextViewCommands {
+    var cut: (() -> ())?
+    var copy: (() -> ())?
+    var paste: (() -> ())?
+    
+    static let `default`: Self = TextViewCommands()
+}
+
+struct CommandOverrideTextView: UIViewRepresentable {
+    
+    @Binding var text: String
+    var textViewCommands: TextViewCommands
+    
+    init(text: Binding<String>, TextViewCommands: TextViewCommands = .default) {
+        self._text = text
+        self.textViewCommands = TextViewCommands
+    }
+    
+    func makeUIView(context: Context) -> CommandOverrideUITextView {
+        let textView = CommandOverrideUITextView (frame: .zero)
+        textView.textViewCommands = self.textViewCommands
+        textView.delegate = context.coordinator
+        return textView
+    }
+    
+    func updateUIView(_ uiView: CommandOverrideUITextView, context: Context) {
+        uiView.text = text
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        return Coordinator(text: $text)
+    }
+    
+    class Coordinator: NSObject, UITextViewDelegate {
+        
+        @Binding var text: String
+        
+        init(text: Binding<String>) {
+            self._text = text
+        }
+        
+        func textViewDidChangeSelection(_ textView: UITextView) {
+            text = textView.text ?? ""
+        }
+    }
 }
