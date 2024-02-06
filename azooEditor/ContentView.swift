@@ -156,158 +156,171 @@ struct ContentView: View {
     }
 
     var body: some View {
-        VStack {
-            Text("azooEditor")
-                .font(.extraLargeTitle2)
-                .background {
-                    // Here's some hacky impl to get keyboard event correctly
-                    // delete from virtual keyboard in visionOS cannot be captured `onKeyPress`
-                    // to capture it, get method here always return 'a' and if the newValue is "" delete is fired.
-                    CommandOverrideTextView(text: .init(get: { "a" }, set: { newValue in
-                        if newValue.count == 1 {
-                            // empty
-                            return
-                        }
-                        if newValue.isEmpty {
-                            self.triggerDelete()
-                            return
-                        }
-                        let key = newValue.last!
-                        if imeState == false {
-                            self.result.append(key)
-                            return
-                        }
-                        if key == "\n" {
-                            self.triggerReturn()
-                            return
-                        }
-                        if key == " " {
-                            self.triggerSpace()
-                            return
-                        }
-                        let target = [
-                            ".": "。",
-                            ",": "、",
-                            "-": "ー",
-                            "!": "！",
-                            "?": "？",
-                        ][key, default: key]
-                        self.composingText.insertAtCursorPosition(target.lowercased(), inputStyle: .roman2kana)
-                    }), TextViewCommands: textViewCommand)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                        .frame(maxWidth: 1, maxHeight: 1)
-                        .focused($textFieldFocus)
-                        .onKeyPress(.return) {
-                            self.triggerReturn()
-                            return .handled
-                        }
-                        .onKeyPress(.delete, phases: .down) { _ in
-                            self.triggerDelete()
-                            self.deleteTask?.cancel()
-                            self.deleteTask = Task {
-                                // Wait for 0.4s first
-                                try await Task.sleep(for: .milliseconds(400))
-                                while !Task.isCancelled {
-                                    self.triggerDelete()
-                                    // then trigger for every 0.1s
-                                    try await Task.sleep(for: .milliseconds(100))
+        HStack{
+            VStack {
+                Text("azooEditor")
+                    .font(.extraLargeTitle2)
+                    .background {
+                        // Here's some hacky impl to get keyboard event correctly
+                        // delete from virtual keyboard in visionOS cannot be captured `onKeyPress`
+                        // to capture it, get method here always return 'a' and if the newValue is "" delete is fired.
+                        CommandOverrideTextView(text: .init(get: { "a" }, set: { newValue in
+                            if newValue.count == 1 {
+                                // empty
+                                return
+                            }
+                            if newValue.isEmpty {
+                                self.triggerDelete()
+                                return
+                            }
+                            let key = newValue.last!
+                            if imeState == false {
+                                self.result.append(key)
+                                return
+                            }
+                            if key == "\n" {
+                                self.triggerReturn()
+                                return
+                            }
+                            if key == " " {
+                                self.triggerSpace()
+                                return
+                            }
+                            let target = [
+                                ".": "。",
+                                ",": "、",
+                                "-": "ー",
+                                "!": "！",
+                                "?": "？",
+                            ][key, default: key]
+                            self.composingText.insertAtCursorPosition(target.lowercased(), inputStyle: .roman2kana)
+                        }), TextViewCommands: textViewCommand)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                            .frame(maxWidth: 1, maxHeight: 1)
+                            .focused($textFieldFocus)
+                            .onKeyPress(.return) {
+                                self.triggerReturn()
+                                return .handled
+                            }
+                            .onKeyPress(.delete, phases: .down) { _ in
+                                self.triggerDelete()
+                                self.deleteTask?.cancel()
+                                self.deleteTask = Task {
+                                    // Wait for 0.4s first
+                                    try await Task.sleep(for: .milliseconds(400))
+                                    while !Task.isCancelled {
+                                        self.triggerDelete()
+                                        // then trigger for every 0.1s
+                                        try await Task.sleep(for: .milliseconds(100))
+                                    }
                                 }
+                                return .handled
                             }
-                            return .handled
-                        }
-                        .onKeyPress(.delete, phases: .up) { _ in
-                            self.deleteTask?.cancel()
-                            return .handled
-                        }
-                        .onKeyPress(.clear) {
-                            self.triggerDelete()
-                            return .handled
-                        }
-                        .onKeyPress(.space) {
-                            self.triggerSpace()
-                            return .handled
-                        }
-                        .onKeyPress(.upArrow) {
-                            if let currentSelection = selection {
-                                selection = max(currentSelection - 1, 0)
+                            .onKeyPress(.delete, phases: .up) { _ in
+                                self.deleteTask?.cancel()
+                                return .handled
                             }
-                            return .handled
-                        }
-                        .onKeyPress(.downArrow) {
-                            nextCandidate()
-                            return .handled
-                        }
-                        .onKeyPress(.tab) {
-                            self.imeState.toggle()
-                            return .handled
-                        }
-                        .onKeyPress(.escape) {
-                            self.textFieldFocus = false
-                            return .handled
-                        }
-                }
-            if result.isEmpty && composingText.isEmpty {
-                Text("After you commit text they will be added here")
-                    .foregroundStyle(.secondary)
-            } else {
+                            .onKeyPress(.clear) {
+                                self.triggerDelete()
+                                return .handled
+                            }
+                            .onKeyPress(.space) {
+                                self.triggerSpace()
+                                return .handled
+                            }
+                            .onKeyPress(.upArrow) {
+                                if let currentSelection = selection {
+                                    selection = max(currentSelection - 1, 0)
+                                }
+                                return .handled
+                            }
+                            .onKeyPress(.downArrow) {
+                                nextCandidate()
+                                return .handled
+                            }
+                            .onKeyPress(.tab) {
+                                self.imeState.toggle()
+                                return .handled
+                            }
+                            .onKeyPress(.escape) {
+                                self.textFieldFocus = false
+                                return .handled
+                            }
+                    }
                 Divider()
-                (Text(result) + Text(composingText.convertTarget).underline())
-                    .font(.largeTitle)
-                    .draggable(result + composingText.convertTarget)
-                HStack(spacing: 30) {
-                    Button("Copy (⌘C)", systemImage: justCopied ? "checkmark" : "doc.on.doc") {
-                        self.copy()
-                    }
-                    .keyboardShortcut("c", modifiers: .command)
-                    Button("Cut (⌘X)", systemImage: "scissors") {
-                        self.copy()
-                        self.clear()
-                    }
-                    .keyboardShortcut("x", modifiers: .command)
-                    Button("Claer", systemImage: "xmark") {
-                        self.clear()
-                    }
+                if result.isEmpty && composingText.isEmpty {
+                    Text("After you commit text they will be added here")
+                        .foregroundStyle(.secondary)
+                } else {
+                    (Text(result) + Text(composingText.convertTarget).underline())
+                        .font(.largeTitle)
+                        .draggable(result + composingText.convertTarget)
                 }
-                .font(.largeTitle)
-            }
-            Spacer()
-            if !textFieldFocus {
-                Button {
-                    textFieldFocus = true
-                } label: {
-                    Label("Start input", systemImage: "square.and.pencil")
-                        .font(.extraLargeTitle)
-                        .padding(20)
+                Spacer()
+                if !textFieldFocus {
+                    Button {
+                        textFieldFocus = true
+                    } label: {
+                        Label("Start input", systemImage: "square.and.pencil")
+                            .font(.extraLargeTitle)
+                            .padding(20)
+                    }
+                    .keyboardShortcut(.return, modifiers: [])
                 }
-                .keyboardShortcut(.return, modifiers: [])
-            }
-            if !imeState {
-                Text("IME OFF")
-                    .font(.largeTitle)
-            } else if selection == nil && !composingText.isEmpty {
-                Text("Press space to convert")
-                    .foregroundStyle(.secondary)
-            } else if candidateCount < 6 {
-                VStack(alignment: .center, spacing: 10) {
-                    candidatesView
-                }
-            } else {
-                ScrollView {
-                    WrappingHStack(alignment: .center, horizontalSpacing: 10) {
+                if !imeState {
+                    Text("IME OFF")
+                        .font(.largeTitle)
+                } else if selection == nil && !composingText.isEmpty {
+                    Text("Press space to convert")
+                        .foregroundStyle(.secondary)
+                } else if candidateCount < 6 {
+                    VStack(alignment: .center, spacing: 10) {
                         candidatesView
                     }
+                } else {
+                    ScrollView {
+                        WrappingHStack(alignment: .center, horizontalSpacing: 10) {
+                            candidatesView
+                        }
+                    }
                 }
-            }
-            Spacer()
-            Button(imeState ? "IME OFF (tab)" : "IME ON (tab)") {
-                guard composingText.isEmpty else {
-                    return
+                Spacer()
+                Button(imeState ? "IME OFF (tab)" : "IME ON (tab)") {
+                    guard composingText.isEmpty else {
+                        return
+                    }
+                    self.imeState.toggle()
                 }
-                self.imeState.toggle()
+                .disabled(!composingText.isEmpty)
+                .keyboardShortcut(.tab)
             }
-            .disabled(!composingText.isEmpty)
-            .keyboardShortcut(.tab)
+            
+            VStack(spacing: 30) {
+                Button(action: {
+                    self.copy()
+                }) {
+                    Image(systemName: justCopied ? "checkmark" : "doc.on.doc")
+                        .padding(20)
+                }
+                .keyboardShortcut("c", modifiers: .command)
+                Button(action: {
+                    self.copy()
+                    self.clear()
+                }) {
+                    Image(systemName: "scissors")
+                        .padding(20)
+                }
+                .keyboardShortcut("x", modifiers: .command)
+                Button(action: {
+                    self.clear()
+                }) {
+                    Image(systemName: "xmark")
+                        .padding(20)
+                }
+                .keyboardShortcut("x", modifiers: .command)
+            }
+            .font(.largeTitle)
         }
         .onAppear {
             self.converter.sendToDicdataStore(.setRequestOptions(Self.option))
