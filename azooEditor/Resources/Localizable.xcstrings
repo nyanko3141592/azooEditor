@@ -88,6 +88,12 @@
         }
       }
     },
+    "Move to left" : {
+
+    },
+    "Move to right" : {
+
+    },
     "Press space to convert" : {
       "localizations" : {
         "ja" : {
